@@ -77,6 +77,23 @@ Round 1 + Round 2: all 3 providers via `run_in_background: true` (same as arbite
 | 2 Socratic | Persona Y (subagent) | `codex exec --ephemeral` | `gemini -p` |
 | Synthesis | Orchestrator (inline) | — | — |
 
+**Notes on provider dispatch:**
+
+1. `--providers` controls which models run in **Round 1 (Diverge) and Round 2 (Interrogate)**
+   dispatch only. Claude ALWAYS performs Steer (clustering) and Synthesize as orchestrator
+   regardless of `--providers` — it is never a skippable provider in those phases.
+
+2. **Single-provider mode (`--providers gemini` or any 1 provider):** `support_count` counts
+   per-persona, not per-provider. The single provider runs 3 sequential calls (one per persona).
+   Max support_count = 3 (all 3 persona passes independently proposed the branch). Best Bet
+   threshold (>= 2) applies to persona-count in this mode.
+
+3. **Auto-select ordered dedup algorithm:** Each criterion draws from the remaining unselected
+   branch pool. (1) max-support: highest support_count, tie-break by index asc. (2) max-novelty:
+   from remaining pool, highest novelty_score, tie-break support_count desc. (3) max-disagreement:
+   from remaining pool, highest disagreement_score, tie-break support_count desc. A branch can
+   only occupy one slot; dedup prevents double-selection.
+
 ### Convergence Detection (deterministic, no ML)
 
 ```

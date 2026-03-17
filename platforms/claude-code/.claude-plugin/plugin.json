@@ -1,6 +1,6 @@
 {
   "name": "brainstorm",
-  "description": "Multi-model brainstorming via deliberation loops — universal ideation using Claude, Codex, and Gemini with rich personas, Socratic questioning, and human steering",
+  "description": "Multi-model brainstorming via deliberation loops — 4-step flow (Diverge / Steer / Interrogate / Synthesize) using Claude, Codex, and Gemini with 3 hardcoded personas (Explorer, Operator, Contrarian), Socratic questioning, human steering checkpoint, and deterministic convergence detection. Flags: --quick (skip steering), --bias novelty|balanced|practical (preset), --providers (restrict subset).",
   "version": "0.1.0",
   "author": {
     "name": "heurema"
@@ -8,5 +8,5 @@
   "homepage": "https://github.com/heurema/brainstorm",
   "repository": "https://github.com/heurema/brainstorm",
   "license": "MIT",
-  "keywords": ["brainstorming", "ideation", "multi-model", "deliberation", "creative", "socratic"]
+  "keywords": ["brainstorming", "ideation", "multi-model", "deliberation", "creative", "socratic", "personas", "diverge", "steer", "interrogate", "synthesize"]
 }
