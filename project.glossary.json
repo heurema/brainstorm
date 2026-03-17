@@ -1,0 +1,189 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-03-17T00:00:00Z",
+  "canonicalTerms": [
+    {
+      "term": "brainstorm",
+      "definition": "The plugin and slash command that runs multi-model deliberation loops for universal ideation. Distinct from the generic activity of brainstorming.",
+      "source": "plugin.json:name, README.md:L1"
+    },
+    {
+      "term": "deliberation loop",
+      "definition": "The structured two-round cycle (Diverge → Steer → Interrogate → Synthesize) that constitutes a brainstorm run.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L18, README.md:L3"
+    },
+    {
+      "term": "Diverge",
+      "definition": "Round 1 of the deliberation loop. All three model providers run in parallel, each assigned a persona, and independently produce 4-6 idea cards plus assumptions, user questions, and anti-goals.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L26-L34, README.md:L7"
+    },
+    {
+      "term": "Steer",
+      "definition": "The interactive checkpoint between Round 1 and Round 2. Claude orchestrator clusters ideas into 5-8 branches; the user selects 2-3 or applies a bias preset.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L35-L38, README.md:L8"
+    },
+    {
+      "term": "Interrogate",
+      "definition": "Round 2 of the deliberation loop (Socratic Interrogation). Models receive only branch summaries and output fatal risks, ranking-changing questions, and strengthening moves.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L39-L48, README.md:L9"
+    },
+    {
+      "term": "Synthesize",
+      "definition": "The final orchestrator phase that classifies branches into Best Bets, Wild Cards, Open Questions, and Next Experiments using deterministic support/fatal-objection counts.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L49-L55, README.md:L10"
+    },
+    {
+      "term": "Steering Checkpoint",
+      "definition": "The human-in-the-loop pause between Diverge and Interrogate where the user steers branch selection. Skipped in --quick mode.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L35-L38"
+    },
+    {
+      "term": "Explorer",
+      "definition": "A hardcoded brainstorm persona. Worldview: maximize novelty, ignore feasibility early, outsider perspective. Must produce at least one idea nobody asked for; no safe proposals.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L62"
+    },
+    {
+      "term": "Operator",
+      "definition": "A hardcoded brainstorm persona. Worldview: maximize execution realism, surface dependencies and adoption paths. Must name 2 concrete blockers per idea; no hand-waving.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L63"
+    },
+    {
+      "term": "Contrarian",
+      "definition": "A hardcoded brainstorm persona. Worldview: attack assumptions, propose inversions and anti-goals. Must challenge the premise itself; cannot agree without evidence.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L64"
+    },
+    {
+      "term": "persona rotation",
+      "definition": "Assignment of personas to model providers using hash(topic) % 3, preventing model-persona bias conflation.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L66-L67"
+    },
+    {
+      "term": "idea card",
+      "definition": "The atomic output unit from a persona in Round 1: one proposed idea plus its assumptions, questions for the user, and anti-goals.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L29-L33"
+    },
+    {
+      "term": "branch",
+      "definition": "A cluster of related ideas produced by the orchestrator after Round 1. There are 5-8 branches per run; the user selects 2-3 for Round 2.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L36"
+    },
+    {
+      "term": "support count",
+      "definition": "The number of model providers that independently proposed a similar branch in Round 1. Used as the primary convergence signal.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L83"
+    },
+    {
+      "term": "fatal objection",
+      "definition": "A blocking issue raised by a model in Round 2 that, if valid, prevents a branch from being classified as a Best Bet.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L84"
+    },
+    {
+      "term": "Best Bet",
+      "definition": "A branch that received support_count >= 2 AND fatal_objections == 0 in the synthesis step.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L86"
+    },
+    {
+      "term": "Wild Card",
+      "definition": "A branch with support_count == 1 and a high-novelty flag set. Preserved in synthesis as a low-consensus but high-originality candidate.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L87"
+    },
+    {
+      "term": "Needs Work",
+      "definition": "A branch classification for any branch with fatal_objections > 0. Listed in synthesis with the specific objections.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L88"
+    },
+    {
+      "term": "anti-goal",
+      "definition": "An explicit statement of what an idea should not achieve or optimize for, produced by a persona in Round 1 alongside the idea card.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L33"
+    },
+    {
+      "term": "bias preset",
+      "definition": "A named automated branch-selection policy: novelty (favor novel branches), practical (favor executable branches), balanced (mixed, default for --quick).",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L37, commands/brainstorm.md:L12-L14"
+    },
+    {
+      "term": "sparse communication",
+      "definition": "The constraint that in Round 2 models receive only branch summaries, not full Round 1 transcripts, to preserve independence of critique.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L43"
+    },
+    {
+      "term": "quick mode",
+      "definition": "Non-interactive run triggered by --quick flag or absence of TTY. Skips the steering checkpoint and auto-selects max-support + max-novelty + max-disagreement branches.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L94-L99"
+    },
+    {
+      "term": "Simpson index",
+      "definition": "A diversity metric logged as telemetry only in v1. Not used for convergence detection or adaptive stopping by design.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L92"
+    },
+    {
+      "term": "orchestrator",
+      "definition": "The Claude instance that runs the Steer and Synthesize phases inline, as distinct from the subagent instances running personas in Diverge and Interrogate.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L73-L78"
+    },
+    {
+      "term": "provider",
+      "definition": "A model vendor dispatched in parallel rounds: claude (subagent), codex (codex exec --ephemeral), gemini (gemini -p). Selectable via --providers flag.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L69-L78"
+    },
+    {
+      "term": "strengthening move",
+      "definition": "An output from Round 2 in which a model proposes how to improve or de-risk a branch rather than reject it.",
+      "source": "docs/plans/2026-03-17-brainstorm-design.md:L47"
+    }
+  ],
+  "aliases": {
+    "ideation": "brainstorm",
+    "brainstorming": "brainstorm",
+    "deliberation": "deliberation loop",
+    "deliberation round": "deliberation loop",
+    "round 1": "Diverge",
+    "diverge round": "Diverge",
+    "round 2": "Interrogate",
+    "socratic round": "Interrogate",
+    "interrogation": "Interrogate",
+    "socratic interrogation": "Interrogate",
+    "synthesis step": "Synthesize",
+    "final synthesis": "Synthesize",
+    "checkpoint": "Steering Checkpoint",
+    "human checkpoint": "Steering Checkpoint",
+    "steering": "Steering Checkpoint",
+    "explorer persona": "Explorer",
+    "operator persona": "Operator",
+    "contrarian persona": "Contrarian",
+    "idea": "idea card",
+    "card": "idea card",
+    "cluster": "branch",
+    "idea cluster": "branch",
+    "support": "support count",
+    "model support": "support count",
+    "fatal risk": "fatal objection",
+    "blocking issue": "fatal objection",
+    "best bet": "Best Bet",
+    "top idea": "Best Bet",
+    "wild card": "Wild Card",
+    "outlier": "Wild Card",
+    "needs work": "Needs Work",
+    "blocked branch": "Needs Work",
+    "inversion": "anti-goal",
+    "bias": "bias preset",
+    "selection bias": "bias preset",
+    "novelty bias": "bias preset",
+    "practical bias": "bias preset",
+    "sparse comms": "sparse communication",
+    "branch summaries": "sparse communication",
+    "--quick": "quick mode",
+    "non-interactive": "quick mode",
+    "automated mode": "quick mode",
+    "diversity metric": "Simpson index",
+    "convergence metric": "Simpson index",
+    "claude orchestrator": "orchestrator",
+    "model provider": "provider",
+    "vendor": "provider",
+    "strengthen": "strengthening move",
+    "improvement suggestion": "strengthening move",
+    "topic hash": "persona rotation",
+    "hash rotation": "persona rotation"
+  }
+}
