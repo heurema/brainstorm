@@ -1,0 +1,7 @@
+schema_version = 1
+
+marketplace = "emporium"
+
+[[version_files]]
+path = ".claude-plugin/plugin.json"
+format = "json"
