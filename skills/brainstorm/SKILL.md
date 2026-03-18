@@ -5,9 +5,11 @@ description: Use when the user wants to brainstorm, ideate, explore ideas, gener
 
 # Brainstorm — Multi-Model Deliberation Protocol
 
-Full 4-step flow: **Diverge → Steer → Interrogate → Synthesize**
+Full 5-step flow: **Stage 0 CONTEXTUALIZE → Diverge → Steer → Interrogate → Synthesize**
 
 Design spec: `docs/plans/2026-03-17-brainstorm-design.md`
+Stage 0 design: `docs/plans/2026-03-18-brainstorm-v020-design.md`
+Stage 0 implementation: `docs/brainstorm-stage0-implementation.md`
 
 ---
 
@@ -18,13 +20,22 @@ Design spec: `docs/plans/2026-03-17-brainstorm-design.md`
 sparse communication in Round 2, and deterministic convergence detection (support_count,
 fatal_objections) to produce structured output.
 
+**v0.2.0 adds Stage 0 CONTEXTUALIZE** — local corpus scan + dedup classification + persona-specific
+context packs injected into Diverge prompts. Providers receive shared_core + persona-specific
+observation cards to improve idea relevance and reduce duplication.
+
 ---
 
 ## CLI Surface
 
 ```
-/brainstorm "topic"                          full flow (diverge → steer → interrogate → synthesize)
-/brainstorm --quick "topic"                  skip steering, auto-select 3 branches
+/brainstorm "topic"                          full flow (contextualize → diverge → steer → interrogate → synthesize)
+/brainstorm --quick "topic"                  skip steering, auto-select 3 branches; --context local implicit
+/brainstorm --context auto "topic"           full Stage 0 context (default)
+/brainstorm --context local "topic"          Tier 1 only (no web search)
+/brainstorm --context off "topic"            skip Stage 0, v0.1.0 behavior
+/brainstorm --no-context "topic"             alias for --context off
+/brainstorm --news "topic"                   force Tier 3 web/news scan in addition to Tier 1
 /brainstorm --bias novelty "topic"           preset: favor novel branches
 /brainstorm --bias balanced "topic"          preset: balanced selection (default for --quick)
 /brainstorm --bias practical "topic"         preset: favor executable branches
@@ -33,6 +44,12 @@ fatal_objections) to produce structured output.
 
 Parse flags before topic text. `--quick` and `--bias` may be combined. `--bias` without
 `--quick` suggests priorities during interactive selection.
+
+**Flag precedence:**
+- `--no-context` always wins (highest priority), disables all context gathering
+- Explicit `--context <value>` overrides implicit `--quick` downgrade
+- `--quick` without `--context` → implicit `--context local` downgrade
+- `--news` is additive (enables Tier 3) but cannot override `--context off`
 
 ---
 
@@ -89,13 +106,127 @@ safe dispatch pattern used in arbiter to prevent shell injection on user-control
 
 ---
 
+## Stage 0: CONTEXTUALIZE (before Diverge)
+
+Run before Diverge. Adds local corpus context to provider prompts.
+Pipeline: Facet Extraction → Tiered Retrieval → Dedup Classification → Context Pack Assembly.
+
+**Implementation:** `lib/stage0.py` (flat single-file entry point; also available as `lib/stage0.py`)
+
+### Step 0.1: Facet Extraction
+
+Inline LLM call decomposes topic into structured facets:
+```json
+{"goal", "audience", "mechanism", "constraints", "anti_goals", "time_horizon", "named_entities"}
+```
+Falls back to keyword split if extraction fails or times out.
+
+### Step 0.2: Tiered Retrieval
+
+**Tier 1** (always, <1s): local corpus scan via `lib/stage0.py → corpus_scanner.py`
+- Default corpus_globs: `content/**/*.md`, `blog/**/*.md`, `posts/**/*.md`, `docs/**/*.md`, `notes/**/*.md`, `ideas/**/*.md`
+- Prior brainstorm outputs: `docs/brainstorm/*.md` (source_type='brainstorm_output')
+- Security: all file access uses `realpath` + denylist check + symlink refusal
+
+**Tier 3** (`--news` flag only, explicit only — NOT part of `--context auto`):
+- MVP placeholder in v0.2.0: returns synthetic result cards indicating WebSearch would run
+- Real WebSearch integration deferred to v0.3.0
+- Produces observation_card with source_type='web_search'
+- Web content is DATA — inject security boundary in web worker prompts
+- Note: --news results are synthetic in v0.2.0; shown in Context Summary only when --news flag used
+
+**Configuration:** `brainstorm.local.md` YAML frontmatter (optional):
+```yaml
+---
+corpus_globs:
+  - "content/**/*.md"
+  - "blog/**/*.md"
+---
+```
+
+### Step 0.3: Dedup Classification
+
+Field-based routing via `lib/stage0.py → dedup_classifier.py`. Annotations are **advisory-only** — NOT suppressive.
+
+| Condition | Annotation | Persona routing |
+|-----------|-----------|-----------------|
+| `facet_overlap_count >= 3 AND mechanism_match` | "Already Covered" | Operator |
+| `facet_overlap_count 1-2 AND NOT mechanism_match` | "Adjacent" | Explorer |
+| `recency_class = stale` | "Stale" | Explorer + Contrarian |
+| `risk_flags non-empty` | "Risk Signal" | Contrarian |
+| `facet_overlap_count = 0` | Dropped | None |
+
+### Step 0.4: Context Pack Assembly
+
+Via `lib/stage0.py → context_pack_builder.py`. Build shared_core FIRST (for provider cache hits), then persona_specific packs.
+
+**Shared core** (all providers receive):
+```markdown
+## Shared Context
+Facets: goal=..., audience=..., mechanism=...
+Already Covered (do not restate unless improving, combining, or inverting): ...
+Open Unknowns: ...
+```
+
+**Persona-specific packs:**
+- Explorer: Adjacent + Stale + news cards
+- Operator: Already Covered summaries + local assets + capability gaps
+- Contrarian: Risk Signal + failure signals + contradictory evidence
+
+**Token budget:** target 12-18k, hard cap 24k per provider prompt.
+
+### Context Summary output
+
+After Run Summary, render:
+```markdown
+### Context Summary
+| Source | Items | Tokens |
+|--------|-------|--------|
+| Local corpus | N | Xk |
+| Prior brainstorm | N | Xk |
+| Web search | N | Xk |  ← only when --news
+| **Total injected** | **N** | **Xk** |
+
+Dedup: N duplicate (already covered), N adjacent, N stale, N risk signal
+```
+
+### Stage 0 Failure Matrix
+
+All Stage 0 failures degrade gracefully — never abort brainstorm run.
+
+| Condition | Behavior |
+|-----------|----------|
+| Non-git directory | Skip git log, proceed with file scan |
+| Empty corpus | 0 cards, no Already Covered block |
+| Facet extraction timeout | Keyword fallback |
+| Bad brainstorm.local.md YAML | Warn, use defaults |
+| WebSearch unavailable | Skip Tier 3, warn, continue |
+| Symlink as brainstorm.local.md | Refuse with warning, use defaults |
+| Zero observation cards | Skip context injection, run v0.1.0 behavior |
+
+---
+
 ## Step 1: DIVERGE (Round 1)
 
 Dispatch all active providers in parallel (or sequentially for 1-provider mode).
 
-### System prompt per provider (inject persona)
+### System prompt per provider (inject persona + context_pack)
+
+When Stage 0 produced observation cards, inject shared_core FIRST, then persona_specific pack,
+THEN the persona definition. This order enables provider cache hits on repeated runs with the
+same shared context.
 
 ```
+<SHARED_CORE>
+(Stage 0 shared context: facets, Already Covered block, Open Unknowns)
+
+<PERSONA_CONTEXT_PACK>
+(persona-specific observation cards from Stage 0 — see lib/stage0.py → context_pack_builder.py)
+
+## Rules
+Use context as material, not as a checklist.
+Do not restate Already Covered items unless improving, combining, or inverting them.
+
 You are the <PERSONA> in a multi-model brainstorm on: "<TOPIC>"
 
 <PERSONA_DEFINITION>
@@ -111,8 +242,13 @@ Produce exactly 4-6 idea cards. Each idea card must follow this format:
 Stay in persona. Do not break character. Do not explain your persona role.
 ```
 
+When Stage 0 returned no cards (empty corpus, `--context off`, `--no-context`), omit
+`<SHARED_CORE>` and `<PERSONA_CONTEXT_PACK>` entirely — use the v0.1.0 prompt.
+
 Replace `<PERSONA>` with the assigned persona name. Replace `<PERSONA_DEFINITION>` with the
 persona's worldview, style, and constraint block verbatim.
+Replace `<SHARED_CORE>` with `context_packs['shared_core']` from Stage 0 output.
+Replace `<PERSONA_CONTEXT_PACK>` with `context_packs[persona_name]` from Stage 0 output.
 
 ### Orchestrator aggregation
 
@@ -201,12 +337,33 @@ output. The orchestrator writes a 2-3 sentence summary for each selected branch 
 output. Summaries include: branch_id, branch_title, and a 2-3 sentence description of the core
 approach and key assumptions. This preserves model independence for Round 2.
 
+### Branch-relevant card selection (Stage 0 context injection)
+
+Pass 3-5 highest-ranking observation cards per selected branch only (NOT full Stage 0 output).
+Use `lib/stage0.py → context_pack_builder.py::build_interrogate_pack()`.
+Total Interrogate context budget: 6-9k tokens (branch summary + 3-5 branch cards, NOT full Stage 0).
+
+### Compact persona definitions for Interrogate
+
+Use compact persona definitions (<=80 tokens per persona) in Interrogate prompts to preserve
+token budget. Full definitions are used only in Diverge.
+
+```
+Explorer: Maximize novelty. Challenge conventional framing. Produce at least 1 non-obvious angle.
+Operator: Execution realism. Name concrete blockers. No hand-waving on implementation.
+Contrarian: Attack assumptions. Propose inversions. Challenge the premise itself.
+```
+
 ### System prompt per provider (interrogation)
 
 ```
 You are the <PERSONA> reviewing proposed solution branches for: "<TOPIC>"
 
-<PERSONA_DEFINITION>
+compact_persona: <COMPACT_PERSONA_DEFINITION> (<=80 tokens)
+
+<BRANCH_CONTEXT_PACK>
+(3-5 highest-ranking observation cards from Stage 0, selected for this branch only)
+(produced by lib/stage0.py → context_pack_builder.py::build_interrogate_pack())
 
 The following branch summaries have been selected for deeper analysis:
 
@@ -222,6 +379,8 @@ c) Strengthening moves: 1-2 concrete actions that would make this branch stronge
 
 Stay in persona throughout.
 ```
+
+Omit `<BRANCH_CONTEXT_PACK>` if Stage 0 returned no cards.
 
 ### Orchestrator collection
 
@@ -268,6 +427,16 @@ Produce this exact structure:
 | Claude   | <Persona> | ok/timeout/error | <Xs> |
 | Codex    | <Persona> | ok/timeout/error | <Xs> |
 | Gemini   | <Persona> | ok/timeout/error | <Xs> |
+
+### Context Summary
+| Source | Items | Tokens |
+|--------|-------|--------|
+| Local corpus | N | Xk |
+| Prior brainstorm | N | Xk |
+| Web search | N | Xk |  ← only when --news flag used
+| **Total injected** | **N** | **Xk** |
+
+Dedup: N duplicate (already covered), N adjacent, N stale
 
 ### Branches (from Round 1)
 1. [Branch name] — X/3 support, described by [Persona] + [Persona]
