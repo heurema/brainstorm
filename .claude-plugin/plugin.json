@@ -1,7 +1,7 @@
 {
   "name": "brainstorm",
   "description": "Multi-model brainstorming via deliberation loops — universal ideation using Claude, Codex, and Gemini with rich personas, Socratic questioning, and human steering",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "heurema"
   },
