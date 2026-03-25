@@ -1,6 +1,19 @@
-# brainstorm
+```
+    __               _            __
+   / /_  _________ _(_)___  _____/ /_____  _________ ___
+  / __ \/ ___/ __ `/ / __ \/ ___/ __/ __ \/ ___/ __ `__ \
+ / /_/ / /  / /_/ / / / / (__  ) /_/ /_/ / /  / / / / / /
+/_.___/_/   \__,_/_/_/ /_/____/\__/\____/_/  /_/ /_/ /_/
+```
 
-Multi-model brainstorming via deliberation loops — universal ideation using Claude, Codex, and Gemini with rich personas, Socratic questioning, and human steering.
+**Multi-model brainstorming via deliberation loops.**
+
+[![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-5b21b6?style=flat-square)]()
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> Universal ideation using Claude, Codex, and Gemini with rich personas, Socratic questioning, and human steering.
+
+---
 
 ## How it works
 
