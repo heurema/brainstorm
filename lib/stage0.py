@@ -225,7 +225,7 @@ def extract_facets(topic: str, timeout: int = 10) -> dict:
             except OSError:
                 pass
 
-        json_match = _re.search(r"\{[\s\S]*\}", raw)
+        json_match = _re.search(r"\{[\s\S]*?\}", raw)
         if not json_match:
             return _keyword_fallback(topic)
 
