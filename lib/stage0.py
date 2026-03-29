@@ -607,12 +607,13 @@ def _scan_brainstorm_outputs(
 
         body_lines = content.splitlines()
         summary_lines = []
-        in_fm = False
+        fm_delimiters_seen = 0
         for line in body_lines:
             if line.strip() == "---":
-                in_fm = not in_fm
-                continue
-            if in_fm:
+                if fm_delimiters_seen < 2:
+                    fm_delimiters_seen += 1
+                    continue
+            if fm_delimiters_seen < 2 and fm_delimiters_seen > 0:
                 continue
             if line.startswith("#"):
                 continue
