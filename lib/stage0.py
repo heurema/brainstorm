@@ -967,7 +967,7 @@ def build_context_packs(
         excess = total_tokens - token_budget_cap
         for persona in persona_packs:
             pack = persona_packs[persona]
-            trimmed = _truncate_to_budget(pack, per_persona_budget - excess // 3)
+            trimmed = _truncate_to_budget(pack, max(0, per_persona_budget - excess // 3))
             persona_packs[persona] = trimmed
 
     ann_counts = count_annotations(classified_cards)
