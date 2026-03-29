@@ -204,10 +204,6 @@ def extract_facets(topic: str, timeout: int = 10) -> dict:
     prompt = FACET_PROMPT_TEMPLATE.format(topic=topic.replace('"', '\\"'))
 
     try:
-        with _tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write(prompt)
-            prompt_file = f.name
-
         try:
             result = _subprocess.run(
                 ["claude", "-p", "--output-format", "text"],
@@ -219,11 +215,6 @@ def extract_facets(topic: str, timeout: int = 10) -> dict:
             raw = result.stdout.strip()
         except (_subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return _keyword_fallback(topic)
-        finally:
-            try:
-                _os.unlink(prompt_file)
-            except OSError:
-                pass
 
         json_match = _re.search(r"\{[\s\S]*?\}", raw)
         if not json_match:
