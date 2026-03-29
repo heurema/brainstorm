@@ -23,7 +23,6 @@ import re as _re
 import json as _json
 import subprocess as _subprocess
 import glob as _glob
-import tempfile as _tempfile
 from datetime import datetime as _datetime
 from pathlib import Path as _Path
 from typing import List, Dict, Optional, Any, Tuple
