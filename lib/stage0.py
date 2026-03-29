@@ -1094,13 +1094,13 @@ def format_context_summary_table(summary: dict, news_enabled: bool = False) -> s
     brainstorm_tokens = 500 if brainstorm_items else 0
     news_tokens = 1800 if news_items else 0
 
-    lines.append(f"| Local corpus | {local_items} | {local_tokens // 1000:.1f}k |\n")
-    lines.append(f"| Prior brainstorm | {brainstorm_items} | {brainstorm_tokens // 1000:.1f}k |\n")
+    lines.append(f"| Local corpus | {local_items} | {local_tokens / 1000:.1f}k |\n")
+    lines.append(f"| Prior brainstorm | {brainstorm_items} | {brainstorm_tokens / 1000:.1f}k |\n")
 
     if news_enabled or news_items > 0:
-        lines.append(f"| Web search | {news_items} | {news_tokens // 1000:.1f}k |\n")
+        lines.append(f"| Web search | {news_items} | {news_tokens / 1000:.1f}k |\n")
 
-    lines.append(f"| **Total injected** | **{total_items}** | **{total_tokens // 1000:.1f}k** |\n")
+    lines.append(f"| **Total injected** | **{total_items}** | **{total_tokens / 1000:.1f}k** |\n")
     lines.append("\n")
 
     already = summary.get("dedup_already_covered", 0)
