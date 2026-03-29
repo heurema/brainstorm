@@ -23,9 +23,7 @@ import re as _re
 import json as _json
 import subprocess as _subprocess
 import glob as _glob
-import tempfile as _tempfile
 from datetime import datetime as _datetime
-from pathlib import Path as _Path
 from typing import List, Dict, Optional, Any, Tuple
 
 # --- config_parser ---
@@ -204,10 +202,6 @@ def extract_facets(topic: str, timeout: int = 10) -> dict:
     prompt = FACET_PROMPT_TEMPLATE.format(topic=topic.replace('"', '\\"'))
 
     try:
-        with _tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write(prompt)
-            prompt_file = f.name
-
         try:
             result = _subprocess.run(
                 ["claude", "-p", "--output-format", "text"],
@@ -219,17 +213,13 @@ def extract_facets(topic: str, timeout: int = 10) -> dict:
             raw = result.stdout.strip()
         except (_subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return _keyword_fallback(topic)
-        finally:
-            try:
-                _os.unlink(prompt_file)
-            except OSError:
-                pass
 
-        json_match = _re.search(r"\{[\s\S]*\}", raw)
-        if not json_match:
+        brace_pos = raw.find("{")
+        if brace_pos == -1:
             return _keyword_fallback(topic)
 
-        facets = _json.loads(json_match.group(0))
+        decoder = _json.JSONDecoder()
+        facets, _ = decoder.raw_decode(raw, brace_pos)
 
         result_facets = {}
         for field in FACET_FIELDS:
@@ -411,7 +401,7 @@ def _detect_risk_flags(content_lower: str) -> list:
     if _re.search(r"\bcontradicts?\b|\bopposite\b|\binverse\b", content_lower):
         flags.append("contradiction")
     if _re.search(r"\bdeprecated\b|\bremoved\b|\breverted\b", content_lower):
-        if "deprecated" not in str(flags):
+        if "deprecated" not in flags:
             flags.append("deprecated")
     return list(dict.fromkeys(flags))
 
@@ -614,15 +604,14 @@ def _scan_brainstorm_outputs(
         title_match = _re.search(r"^#\s+(.+)$", content, _re.MULTILINE)
         title = title_match.group(1).strip() if title_match else _os.path.basename(filepath)
 
-        body_lines = content.splitlines()
+        body_start = 0
+        if content.startswith("---"):
+            end_fm = content.find("---", 3)
+            if end_fm != -1:
+                body_start = end_fm + 3
+
         summary_lines = []
-        in_fm = False
-        for line in body_lines:
-            if line.strip() == "---":
-                in_fm = not in_fm
-                continue
-            if in_fm:
-                continue
+        for line in content[body_start:].splitlines():
             if line.startswith("#"):
                 continue
             if line.strip():
@@ -975,7 +964,7 @@ def build_context_packs(
         excess = total_tokens - token_budget_cap
         for persona in persona_packs:
             pack = persona_packs[persona]
-            trimmed = _truncate_to_budget(pack, per_persona_budget - excess // 3)
+            trimmed = _truncate_to_budget(pack, max(0, per_persona_budget - excess // 3))
             persona_packs[persona] = trimmed
 
     ann_counts = count_annotations(classified_cards)
@@ -1103,13 +1092,13 @@ def format_context_summary_table(summary: dict, news_enabled: bool = False) -> s
     brainstorm_tokens = 500 if brainstorm_items else 0
     news_tokens = 1800 if news_items else 0
 
-    lines.append(f"| Local corpus | {local_items} | {local_tokens // 1000:.1f}k |\n")
-    lines.append(f"| Prior brainstorm | {brainstorm_items} | {brainstorm_tokens // 1000:.1f}k |\n")
+    lines.append(f"| Local corpus | {local_items} | {local_tokens / 1000:.1f}k |\n")
+    lines.append(f"| Prior brainstorm | {brainstorm_items} | {brainstorm_tokens / 1000:.1f}k |\n")
 
     if news_enabled or news_items > 0:
-        lines.append(f"| Web search | {news_items} | {news_tokens // 1000:.1f}k |\n")
+        lines.append(f"| Web search | {news_items} | {news_tokens / 1000:.1f}k |\n")
 
-    lines.append(f"| **Total injected** | **{total_items}** | **{total_tokens // 1000:.1f}k** |\n")
+    lines.append(f"| **Total injected** | **{total_items}** | **{total_tokens / 1000:.1f}k** |\n")
     lines.append("\n")
 
     already = summary.get("dedup_already_covered", 0)
