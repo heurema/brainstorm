@@ -216,11 +216,12 @@ def extract_facets(topic: str, timeout: int = 10) -> dict:
         except (_subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return _keyword_fallback(topic)
 
-        json_match = _re.search(r"\{[\s\S]*?\}", raw)
-        if not json_match:
+        brace_pos = raw.find("{")
+        if brace_pos == -1:
             return _keyword_fallback(topic)
 
-        facets = _json.loads(json_match.group(0))
+        decoder = _json.JSONDecoder()
+        facets, _ = decoder.raw_decode(raw, brace_pos)
 
         result_facets = {}
         for field in FACET_FIELDS:
