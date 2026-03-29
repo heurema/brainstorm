@@ -402,7 +402,7 @@ def _detect_risk_flags(content_lower: str) -> list:
     if _re.search(r"\bcontradicts?\b|\bopposite\b|\binverse\b", content_lower):
         flags.append("contradiction")
     if _re.search(r"\bdeprecated\b|\bremoved\b|\breverted\b", content_lower):
-        if "deprecated" not in str(flags):
+        if "deprecated" not in flags:
             flags.append("deprecated")
     return list(dict.fromkeys(flags))
 
