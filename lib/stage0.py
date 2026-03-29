@@ -606,16 +606,14 @@ def _scan_brainstorm_outputs(
         title_match = _re.search(r"^#\s+(.+)$", content, _re.MULTILINE)
         title = title_match.group(1).strip() if title_match else _os.path.basename(filepath)
 
-        body_lines = content.splitlines()
+        body_start = 0
+        if content.startswith("---"):
+            end_fm = content.find("---", 3)
+            if end_fm != -1:
+                body_start = end_fm + 3
+
         summary_lines = []
-        fm_delimiters_seen = 0
-        for line in body_lines:
-            if line.strip() == "---":
-                if fm_delimiters_seen < 2:
-                    fm_delimiters_seen += 1
-                    continue
-            if fm_delimiters_seen < 2 and fm_delimiters_seen > 0:
-                continue
+        for line in content[body_start:].splitlines():
             if line.startswith("#"):
                 continue
             if line.strip():
